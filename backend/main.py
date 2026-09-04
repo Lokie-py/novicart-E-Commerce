@@ -1,6 +1,9 @@
+import os
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from dotenv import load_dotenv
 
 from database import engine, Base, SessionLocal
 import models
@@ -20,13 +23,36 @@ from security import hash_password, verify_password
 from auth import create_access_token
 from dependencies import get_current_user, get_current_admin
 
+# -------------------------
+# Environment Configuration
+# -------------------------
+
+load_dotenv()
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
+
+# -------------------------
+# Database
+# -------------------------
+
 Base.metadata.create_all(bind=engine)
+
+
+# -------------------------
+# FastAPI App
+# -------------------------
 
 app = FastAPI()
 
+
+# -------------------------
+# CORS Configuration
+# -------------------------
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -158,7 +184,10 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
     hashed_password = hash_password(user.password)
 
     new_user = models.User(
-        name=user.name, email=user.email, password_hash=hashed_password, role="customer"
+        name=user.name,
+        email=user.email,
+        password_hash=hashed_password,
+        role="customer",
     )
 
     db.add(new_user)
@@ -243,7 +272,8 @@ def add_to_cart(
 
 @app.get("/cart", response_model=list[CartItemResponse])
 def get_cart(
-    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     cart_items = (
         db.query(models.CartItem)
@@ -285,7 +315,8 @@ def remove_from_cart(
 
 @app.post("/orders", response_model=OrderResponse)
 def create_order(
-    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     cart_items = (
         db.query(models.CartItem)
@@ -331,7 +362,9 @@ def create_order(
         )
 
     new_order = models.Order(
-        user_id=current_user.id, total_amount=total_amount, status="confirmed"
+        user_id=current_user.id,
+        total_amount=total_amount,
+        status="confirmed",
     )
 
     db.add(new_order)
@@ -375,7 +408,8 @@ def create_order(
 
 @app.get("/orders", response_model=list[OrderResponse])
 def get_my_orders(
-    current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     orders = (
         db.query(models.Order).filter(models.Order.user_id == current_user.id).all()
@@ -421,7 +455,10 @@ def get_my_order(
 ):
     order = (
         db.query(models.Order)
-        .filter(models.Order.id == order_id, models.Order.user_id == current_user.id)
+        .filter(
+            models.Order.id == order_id,
+            models.Order.user_id == current_user.id,
+        )
         .first()
     )
 

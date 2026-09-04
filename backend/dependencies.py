@@ -12,6 +12,10 @@ from database import SessionLocal
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
+
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is not set in the environment.")
+
 ALGORITHM = "HS256"
 
 security = HTTPBearer()
