@@ -666,6 +666,52 @@ def get_all_orders(
     return result
 
 
+@app.patch("/admin/orders/{order_id}/status")
+def update_order_status(
+    order_id: int,
+    status: str,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    allowed_statuses = {
+        "confirmed",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+    }
+
+    status = status.strip().lower()
+
+    if status not in allowed_statuses:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid status. Allowed statuses: "
+                "confirmed, processing, shipped, delivered, cancelled"
+            ),
+        )
+
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+
+    if not order:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found",
+        )
+
+    order.status = status
+
+    db.commit()
+    db.refresh(order)
+
+    return {
+        "message": "Order status updated successfully",
+        "order_id": order.id,
+        "status": order.status,
+    }
+
+
 @app.get("/admin/stats")
 def get_admin_stats(
     current_admin: models.User = Depends(get_current_admin),
