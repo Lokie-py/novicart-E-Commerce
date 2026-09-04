@@ -4,8 +4,6 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from jose import jwt
 
-from security import verify_password
-
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")

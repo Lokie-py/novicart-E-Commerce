@@ -1,10 +1,12 @@
+import logging
 import os
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from decimal import Decimal
+
 from database import engine, Base, SessionLocal
 import models
 
@@ -22,6 +24,8 @@ from schemas import (
 from security import hash_password, verify_password
 from auth import create_access_token
 from dependencies import get_current_user, get_current_admin
+
+logger = logging.getLogger(__name__)
 
 # -------------------------
 # Environment Configuration
@@ -46,6 +50,20 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(
+        "Unhandled exception on %s %s",
+        request.method,
+        request.url.path,
+    )
+
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
 # -------------------------
 # CORS Configuration
 # -------------------------
@@ -54,8 +72,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[FRONTEND_URL],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 

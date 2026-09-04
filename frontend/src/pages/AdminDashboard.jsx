@@ -170,9 +170,13 @@ function AdminDashboard() {
           <button
             type="button"
             className="auth-button"
-            onClick={() => navigate("/admin/products")}
+            onClick={() =>
+              document
+                .querySelector(".admin-orders")
+                ?.scrollIntoView({ behavior: "smooth" })
+            }
           >
-            Manage Products
+            Manage Orders
           </button>
 
           <button
