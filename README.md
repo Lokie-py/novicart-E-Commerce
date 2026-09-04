@@ -11,11 +11,7 @@ The project has been **deployed and tested end-to-end** using **Amazon S3, AWS E
 ## 🚀 Live Application
 
 **Live Website:**  
-`YOUR_S3_WEBSITE_URL`
-
-**Backend API / Swagger Documentation:**  
-`YOUR_EC2_PUBLIC_IP/docs`
-
+(http://novicart-frontend-lokesh-2026.s3-website-us-east-1.amazonaws.com/)
 ---
 
 ## ✨ Features
