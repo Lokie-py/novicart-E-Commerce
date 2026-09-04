@@ -110,9 +110,53 @@ def create_product(
     return new_product
 
 
+@app.get("/products/categories", response_model=list[str])
+def get_product_categories(
+    db: Session = Depends(get_db),
+):
+    categories = (
+        db.query(models.Product.category)
+        .filter(models.Product.category.isnot(None))
+        .filter(models.Product.category != "")
+        .distinct()
+        .order_by(models.Product.category)
+        .all()
+    )
+
+    return [category[0] for category in categories]
+
+
 @app.get("/products", response_model=list[ProductResponse])
-def get_products(db: Session = Depends(get_db)):
-    return db.query(models.Product).all()
+def get_products(
+    search: str | None = None,
+    category: str | None = None,
+    sort: str | None = None,
+    db: Session = Depends(get_db),
+):
+    query = db.query(models.Product)
+
+    # Search
+    if search:
+        search_term = f"%{search.strip()}%"
+
+        query = query.filter(
+            models.Product.name.ilike(search_term)
+            | models.Product.description.ilike(search_term)
+            | models.Product.category.ilike(search_term)
+        )
+
+    # Category filter
+    if category:
+        query = query.filter(models.Product.category.ilike(category.strip()))
+
+    # Price sorting
+    if sort == "price_asc":
+        query = query.order_by(models.Product.price.asc())
+
+    elif sort == "price_desc":
+        query = query.order_by(models.Product.price.desc())
+
+    return query.all()
 
 
 @app.get("/products/{product_id}", response_model=ProductResponse)
@@ -297,6 +341,60 @@ def get_cart(
     )
 
     return cart_items
+
+
+@app.patch("/cart/{cart_item_id}", response_model=CartItemResponse)
+def update_cart_quantity(
+    cart_item_id: int,
+    quantity: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if quantity <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Quantity must be greater than 0",
+        )
+
+    cart_item = (
+        db.query(models.CartItem)
+        .filter(
+            models.CartItem.id == cart_item_id,
+            models.CartItem.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not cart_item:
+        raise HTTPException(
+            status_code=404,
+            detail="Cart item not found",
+        )
+
+    product = (
+        db.query(models.Product)
+        .filter(models.Product.id == cart_item.product_id)
+        .first()
+    )
+
+    if not product:
+        raise HTTPException(
+            status_code=404,
+            detail="Product not found",
+        )
+
+    if quantity > product.stock:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only {product.stock} units of {product.name} are available",
+        )
+
+    cart_item.quantity = quantity
+
+    db.commit()
+    db.refresh(cart_item)
+
+    return cart_item
 
 
 @app.delete("/cart/{cart_item_id}")
