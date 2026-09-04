@@ -159,7 +159,7 @@ function Products() {
                 <div className="product-bottom">
 
                   <span className="product-price">
-                    ₹{product.price.toFixed(2)}
+                    ₹{Number(product.price).toFixed(2)}
                   </span>
 
                   <span className="view-product">

@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-
+from decimal import Decimal
 from database import engine, Base, SessionLocal
 import models
 
@@ -241,8 +241,8 @@ def add_to_cart(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    if product.stock < cart_item.quantity:
-        raise HTTPException(status_code=400, detail="Not enough stock available")
+    if cart_item.quantity <= 0:
+        raise HTTPException(status_code=400, detail="Quantity must be greater than 0")
 
     existing_item = (
         db.query(models.CartItem)
@@ -254,8 +254,23 @@ def add_to_cart(
     )
 
     if existing_item:
-        existing_item.quantity += cart_item.quantity
+        new_quantity = existing_item.quantity + cart_item.quantity
+
+        if new_quantity > product.stock:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only {product.stock} units of {product.name} are available",
+            )
+
+        existing_item.quantity = new_quantity
+
     else:
+        if cart_item.quantity > product.stock:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Only {product.stock} units of {product.name} are available",
+            )
+
         existing_item = models.CartItem(
             user_id=current_user.id,
             product_id=cart_item.product_id,
@@ -327,83 +342,100 @@ def create_order(
     if not cart_items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    total_amount = 0
-    order_items_data = []
+    try:
+        total_amount = Decimal("0.00")
+        order_items_data = []
 
-    for cart_item in cart_items:
-
-        product = (
-            db.query(models.Product)
-            .filter(models.Product.id == cart_item.product_id)
-            .first()
-        )
-
-        if not product:
-            raise HTTPException(
-                status_code=404, detail=f"Product {cart_item.product_id} not found"
+        # Validate cart and calculate total
+        for cart_item in cart_items:
+            product = (
+                db.query(models.Product)
+                .filter(models.Product.id == cart_item.product_id)
+                .first()
             )
 
-        if product.stock < cart_item.quantity:
-            raise HTTPException(
-                status_code=400, detail=f"Not enough stock for {product.name}"
+            if not product:
+                raise HTTPException(
+                    status_code=404, detail=f"Product {cart_item.product_id} not found"
+                )
+
+            if cart_item.quantity <= 0:
+                raise HTTPException(
+                    status_code=400, detail=f"Invalid quantity for {product.name}"
+                )
+
+            if product.stock < cart_item.quantity:
+                raise HTTPException(
+                    status_code=400, detail=f"Not enough stock for {product.name}"
+                )
+
+            subtotal = product.price * cart_item.quantity
+            total_amount += subtotal
+
+            order_items_data.append(
+                {
+                    "product_id": product.id,
+                    "product_name": product.name,
+                    "price": product.price,
+                    "quantity": cart_item.quantity,
+                    "subtotal": subtotal,
+                }
             )
 
-        subtotal = product.price * cart_item.quantity
-        total_amount += subtotal
-
-        order_items_data.append(
-            {
-                "product_id": product.id,
-                "product_name": product.name,
-                "price": product.price,
-                "quantity": cart_item.quantity,
-                "subtotal": subtotal,
-            }
+        # Create order
+        new_order = models.Order(
+            user_id=current_user.id,
+            total_amount=total_amount,
+            status="confirmed",
         )
 
-    new_order = models.Order(
-        user_id=current_user.id,
-        total_amount=total_amount,
-        status="confirmed",
-    )
+        db.add(new_order)
+        db.flush()
 
-    db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
+        # Create order items and update stock
+        for item in order_items_data:
+            order_item = models.OrderItem(
+                order_id=new_order.id,
+                product_id=item["product_id"],
+                product_name=item["product_name"],
+                price=item["price"],
+                quantity=item["quantity"],
+                subtotal=item["subtotal"],
+            )
 
-    for item in order_items_data:
+            db.add(order_item)
 
-        order_item = models.OrderItem(
-            order_id=new_order.id,
-            product_id=item["product_id"],
-            product_name=item["product_name"],
-            price=item["price"],
-            quantity=item["quantity"],
-            subtotal=item["subtotal"],
-        )
+            product = (
+                db.query(models.Product)
+                .filter(models.Product.id == item["product_id"])
+                .first()
+            )
 
-        db.add(order_item)
+            product.stock -= item["quantity"]
 
-        product = (
-            db.query(models.Product)
-            .filter(models.Product.id == item["product_id"])
-            .first()
-        )
+        # Clear cart
+        for cart_item in cart_items:
+            db.delete(cart_item)
 
-        product.stock -= item["quantity"]
+        # Commit everything together
+        db.commit()
+        db.refresh(new_order)
 
-    for cart_item in cart_items:
-        db.delete(cart_item)
+        return {
+            "id": new_order.id,
+            "total_amount": new_order.total_amount,
+            "status": new_order.status,
+            "created_at": new_order.created_at,
+            "items": order_items_data,
+        }
 
-    db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
 
-    return {
-        "id": new_order.id,
-        "total_amount": new_order.total_amount,
-        "status": new_order.status,
-        "created_at": new_order.created_at,
-        "items": order_items_data,
-    }
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to create order")
 
 
 @app.get("/orders", response_model=list[OrderResponse])

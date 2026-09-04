@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Numeric
 from datetime import datetime, timezone
 
 from database import Base
@@ -10,7 +10,7 @@ class Product(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     description = Column(Text)
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
     image_url = Column(String(500))
     category = Column(String(100))
     stock = Column(Integer, default=0)
@@ -45,7 +45,7 @@ class Order(Base):
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    total_amount = Column(Float, nullable=False)
+    total_amount = Column(Numeric(10, 2), nullable=False)
 
     status = Column(String(30), default="confirmed")
 
@@ -63,8 +63,8 @@ class OrderItem(Base):
 
     product_name = Column(String(100), nullable=False)
 
-    price = Column(Float, nullable=False)
+    price = Column(Numeric(10, 2), nullable=False)
 
     quantity = Column(Integer, nullable=False)
 
-    subtotal = Column(Float, nullable=False)
+    subtotal = Column(Numeric(10, 2), nullable=False)

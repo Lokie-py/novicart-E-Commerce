@@ -108,7 +108,7 @@ function Orders() {
                 </span>
 
                 <strong>
-                  ₹{order.total_amount.toFixed(2)}
+                  ₹{Number(order.total_amount).toFixed(2)}
                 </strong>
 
               </div>

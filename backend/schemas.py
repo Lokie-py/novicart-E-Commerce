@@ -1,11 +1,12 @@
 from pydantic import BaseModel
 from datetime import datetime
+from decimal import Decimal
 
 
 class ProductCreate(BaseModel):
     name: str
     description: str | None = None
-    price: float
+    price: Decimal
     image_url: str | None = None
     category: str | None = None
     stock: int = 0
@@ -56,14 +57,14 @@ class CartItemResponse(BaseModel):
 class OrderItemResponse(BaseModel):
     product_id: int
     product_name: str
-    price: float
+    price: Decimal
     quantity: int
-    subtotal: float
+    subtotal: Decimal
 
 
 class OrderResponse(BaseModel):
     id: int
-    total_amount: float
+    total_amount: Decimal
     status: str
     created_at: datetime
     items: list[OrderItemResponse]

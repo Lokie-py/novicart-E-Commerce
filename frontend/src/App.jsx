@@ -11,151 +11,79 @@ import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
 import Orders from "./pages/Orders";
+import OrderDetails from "./pages/OrderDetails";
 import AdminDashboard from "./pages/AdminDashboard";
 
 import "./App.css";
 
-
 function App() {
-
   const { user, loading, logout } = useAuth();
-
 
   if (loading) {
     return null;
   }
 
-
   return (
     <BrowserRouter>
-
       <nav className="navbar">
-
         <div className="navbar-inner">
-
           <Link to="/" className="logo">
             NoviCart
           </Link>
 
-
           <div className="nav-links">
+            <Link to="/">Home</Link>
 
-            <Link to="/">
-              Home
-            </Link>
+            <Link to="/products">Products</Link>
 
-            <Link to="/products">
-              Products
-            </Link>
+            {user && <Link to="/cart">Cart</Link>}
 
+            {user && <Link to="/orders">Orders</Link>}
 
-            {user && (
-              <Link to="/cart">
-                Cart
-              </Link>
-            )}
-
-
-            {user && (
-              <Link to="/orders">
-                Orders
-              </Link>
-            )}
-
-
-            {user?.role === "admin" && (
-              <Link to="/admin">
-                Admin
-              </Link>
-            )}
-
+            {user?.role === "admin" && <Link to="/admin">Admin</Link>}
 
             {!user && (
               <>
-                <Link to="/login">
-                  Login
-                </Link>
+                <Link to="/login">Login</Link>
 
-                <Link to="/register">
-                  Register
-                </Link>
+                <Link to="/register">Register</Link>
               </>
             )}
 
-
             {user && (
-              <button
-                className="logout-button"
-                onClick={logout}
-              >
+              <button className="logout-button" onClick={logout}>
                 Logout
               </button>
             )}
-
           </div>
-
         </div>
-
       </nav>
 
-
       <Routes>
+        <Route path="/" element={<Home />} />
 
-        <Route
-          path="/"
-          element={<Home />}
-        />
+        <Route path="/products" element={<Products />} />
 
-        <Route
-          path="/products"
-          element={<Products />}
-        />
+        <Route path="/products/:productId" element={<ProductDetails />} />
 
-        <Route
-          path="/products/:productId"
-          element={<ProductDetails />}
-        />
+        <Route path="/login" element={<Login />} />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
+        <Route path="/register" element={<Register />} />
 
-        <Route
-          path="/register"
-          element={<Register />}
-        />
+        <Route path="/cart" element={<Cart />} />
 
-        <Route
-          path="/cart"
-          element={<Cart />}
-        />
+        <Route path="/checkout" element={<Checkout />} />
 
-        <Route
-          path="/checkout"
-          element={<Checkout />}
-        />
+        <Route path="/order-success/:orderId" element={<OrderSuccess />} />
 
-        <Route
-          path="/order-success/:orderId"
-          element={<OrderSuccess />}
-        />
+        <Route path="/orders" element={<Orders />} />
 
-        <Route
-          path="/orders"
-          element={<Orders />}
-        />
+        <Route path="/orders/:orderId" element={<OrderDetails />} />
 
-        <Route
-          path="/admin"
-          element={<AdminDashboard />}
-        />
-
+        <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
-
     </BrowserRouter>
   );
 }
-
 
 export default App;
